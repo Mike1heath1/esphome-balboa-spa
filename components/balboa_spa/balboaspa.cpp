@@ -8,6 +8,18 @@ namespace esphome
         static const char *TAG = "BalboaSpa.component";
         static const char *CRC_TAG = "BalboaSpa.CRC";
 
+        // Normalize pump state based on capability
+        static inline uint8_t normalizePumpState(uint8_t rawState, uint8_t pumpCapability)
+        {
+            // Some single-speed pumps report ON as 2 in status frames.
+            // Normalize to logical ON=1 for capability-aware consistency.
+            if (pumpCapability == 1 && rawState == 2)
+            {
+                return 1;
+            }
+            return rawState;
+        }
+
         // Protocol byte indices for status update (0x13) message
         static const uint8_t STATUS_UPDATE_REMINDER_BYTE = 6;
 
@@ -724,28 +736,28 @@ namespace esphome
             }
 
             // 16:Flags Byte 11 - Multi-speed jet pumps (2 bits each: 0=OFF, 1=LOW, 2=HIGH)
-            spa_component_state = (input_queue[16] & 0x03); // Bits 0-1 for jet1
+            spa_component_state = normalizePumpState((input_queue[16] & 0x03), spaConfig.pump1); // Bits 0-1 for jet1
             if (spa_component_state != spaState.jet1)
             {
                 ESP_LOGD(TAG, "Spa/jet_1/state: %.0f", spa_component_state);
                 spaState.jet1 = spa_component_state;
             }
 
-            spa_component_state = (input_queue[16] & 0x0C) >> 2; // Bits 2-3 for jet2
+            spa_component_state = normalizePumpState((input_queue[16] & 0x0C) >> 2, spaConfig.pump2); // Bits 2-3 for jet2
             if (spa_component_state != spaState.jet2)
             {
                 ESP_LOGD(TAG, "Spa/jet_2/state: %.0f", spa_component_state);
                 spaState.jet2 = spa_component_state;
             }
 
-            spa_component_state = (input_queue[16] & 0x30) >> 4; // Bits 4-5 for jet3
+            spa_component_state = normalizePumpState((input_queue[16] & 0x30) >> 4, spaConfig.pump3); // Bits 4-5 for jet3
             if (spa_component_state != spaState.jet3)
             {
                 ESP_LOGD(TAG, "Spa/jet_3/state: %.0f", spa_component_state);
                 spaState.jet3 = spa_component_state;
             }
 
-            spa_component_state = (input_queue[16] & 0xC0) >> 6; // Bits 6-7 for jet4
+            spa_component_state = normalizePumpState((input_queue[16] & 0xC0) >> 6, spaConfig.pump4); // Bits 6-7 for jet4
             if (spa_component_state != spaState.jet4)
             {
                 ESP_LOGD(TAG, "Spa/jet_4/state: %.0f", spa_component_state);
